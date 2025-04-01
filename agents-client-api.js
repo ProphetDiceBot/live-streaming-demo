@@ -1,8 +1,9 @@
 'use strict';
-const fetchJsonFile = await fetch('./api.json');
-const DID_API = await fetchJsonFile.json();
+// Load the Gemini API configuration
+const fetchJsonFile = await fetch('./gemini_api.json');
+const GEMINI_API = await fetchJsonFile.json();
 
-if (DID_API.key == '🤫') alert('Please put your api key inside ./api.json and restart..');
+if (GEMINI_API.key == '🤫') alert('Please put your api key inside ./gemini_api.json and restart..');
 
 const RTCPeerConnection = (
   window.RTCPeerConnection ||
@@ -37,7 +38,7 @@ window.onload = (event) => {
 
   if (agentId == '' || agentId == undefined) {
     console.log(
-      "Empty 'agentID' and 'chatID' variables\n\n1. Click on the 'Create new Agent with Knowledge' button\n2. Open the Console and wait for the process to complete\n3. Press on the 'Connect' button\n4. Type and send a message to the chat\nNOTE: You can store the created 'agentID' and 'chatId' variables at the bottom of the JS file for future chats"
+      "Empty 'agentID' and 'chatID' variables\n\n1. Click on the 'Create new Agent with Knowledge' button\n2. Open the Console and wait for the process to complete\n3. Press on the 'Connect' button"
     );
   } else {
     console.log(
@@ -50,6 +51,7 @@ window.onload = (event) => {
     chatIdLabel.innerHTML = chatId;
   }
 };
+
 async function createPeerConnection(offer, iceServers) {
   if (!peerConnection) {
     peerConnection = new RTCPeerConnection({ iceServers });
@@ -64,13 +66,13 @@ async function createPeerConnection(offer, iceServers) {
   await peerConnection.setRemoteDescription(offer);
   console.log('set remote sdp OK');
 
-  const sessionClientAnswer = await peerConnection.createAnswer();
+  sessionClientAnswer = await peerConnection.createAnswer();
   console.log('create local sdp OK');
 
   await peerConnection.setLocalDescription(sessionClientAnswer);
   console.log('set local sdp OK');
 
-  // Data Channel creation (for dispalying the Agent's responses as text)
+  // Data Channel creation (for displaying the Agent's responses as text)
   let dc = await peerConnection.createDataChannel('JanusDataChannel');
   dc.onopen = () => {
     console.log('datachannel open');
@@ -101,19 +103,21 @@ async function createPeerConnection(offer, iceServers) {
 
   return sessionClientAnswer;
 }
+
 function onIceGatheringStateChange() {
   iceGatheringStatusLabel.innerText = peerConnection.iceGatheringState;
   iceGatheringStatusLabel.className = 'iceGatheringState-' + peerConnection.iceGatheringState;
 }
+
 function onIceCandidate(event) {
   if (event.candidate) {
     const { candidate, sdpMid, sdpMLineIndex } = event.candidate;
 
     // WEBRTC API CALL 3 - Submit network information
-    fetch(`${DID_API.url}/${DID_API.service}/streams/${streamId}/ice`, {
+    fetch(`${GEMINI_API.url}/${GEMINI_API.service}/streams/${streamId}/ice`, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${DID_API.key}`,
+        Authorization: `Basic ${GEMINI_API.key}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -125,6 +129,7 @@ function onIceCandidate(event) {
     });
   }
 }
+
 function onIceConnectionStateChange() {
   iceStatusLabel.innerText = peerConnection.iceConnectionState;
   iceStatusLabel.className = 'iceConnectionState-' + peerConnection.iceConnectionState;
@@ -133,15 +138,18 @@ function onIceConnectionStateChange() {
     closePC();
   }
 }
+
 function onConnectionStateChange() {
   // not supported in firefox
   peerStatusLabel.innerText = peerConnection.connectionState;
   peerStatusLabel.className = 'peerConnectionState-' + peerConnection.connectionState;
 }
+
 function onSignalingStateChange() {
   signalingStatusLabel.innerText = peerConnection.signalingState;
   signalingStatusLabel.className = 'signalingState-' + peerConnection.signalingState;
 }
+
 function onVideoStatusChange(videoIsPlaying, stream) {
   let status;
   if (videoIsPlaying) {
@@ -156,13 +164,14 @@ function onVideoStatusChange(videoIsPlaying, stream) {
   streamingStatusLabel.innerText = status;
   streamingStatusLabel.className = 'streamingState-' + status;
 }
+
 function onTrack(event) {
   /**
-   * The following code is designed to provide information about wether currently there is data
+   * The following code is designed to provide information about whether currently there is data
    * that's being streamed - It does so by periodically looking for changes in total stream data size
    *
    * This information in our case is used in order to show idle video while no video is streaming.
-   * To create this idle video use the POST https://api.d-id.com/talks (or clips) endpoint with a silent audio file or a text script with only ssml breaks
+   * To create this idle video use the POST https://api.gemini.com/talks (or clips) endpoint with a silent audio file or a text script with only ssml breaks
    * https://docs.aws.amazon.com/polly/latest/dg/supportedtags.html#break-tag
    * for seamless results use `config.fluent: true` and provide the same configuration as the streaming video
    */
@@ -184,6 +193,7 @@ function onTrack(event) {
     });
   }, 500);
 }
+
 function setVideoElement(stream) {
   if (!stream) return;
   // Add Animation Class
@@ -208,6 +218,7 @@ function setVideoElement(stream) {
       .catch((e) => {});
   }
 }
+
 function playIdleVideo() {
   // Add Animation Class
   videoElement.classList.toggle('animated');
@@ -221,6 +232,7 @@ function playIdleVideo() {
     videoElement.classList.remove('animated');
   }, 1000);
 }
+
 function stopAllStreams() {
   if (videoElement.srcObject) {
     console.log('stopping video streams');
@@ -228,6 +240,7 @@ function stopAllStreams() {
     videoElement.srcObject = null;
   }
 }
+
 function closePC(pc = peerConnection) {
   if (!pc) return;
   console.log('stopping peer connection');
@@ -248,6 +261,7 @@ function closePC(pc = peerConnection) {
     peerConnection = null;
   }
 }
+
 const maxRetryCount = 3;
 const maxDelaySec = 4;
 async function fetchWithRetries(url, options, retries = 1) {
@@ -271,7 +285,7 @@ const connectButton = document.getElementById('connect-button');
 connectButton.onclick = async () => {
   if (agentId == '' || agentId === undefined) {
     return alert(
-      "1. Click on the 'Create new Agent with Knowledge' button\n2. Open the Console and wait for the process to complete\n3. Press on the 'Connect' button\n4. Type and send a message to the chat\nNOTE: You can store the created 'agentID' and 'chatId' variables at the bottom of the JS file for future chats"
+      "1. Click on the 'Create new Agent with Knowledge' button\n2. Open the Console and wait for the process to complete\n3. Press on the 'Connect' button\n4. Type and send a message to the chat"
     );
   }
 
@@ -282,14 +296,14 @@ connectButton.onclick = async () => {
   closePC();
 
   // WEBRTC API CALL 1 - Create a new stream
-  const sessionResponse = await fetchWithRetries(`${DID_API.url}/${DID_API.service}/streams`, {
+  const sessionResponse = await fetchWithRetries(`${GEMINI_API.url}/${GEMINI_API.service}/streams`, {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${DID_API.key}`,
+      Authorization: `Basic ${GEMINI_API.key}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      source_url: 'https://create-images-results.d-id.com/DefaultPresenters/Emma_f/v1_image.jpeg',
+      source_url: 'https://create-images-results.gemini.com/DefaultPresenters/Emma_f/v1_image.jpeg',
     }),
   });
 
@@ -306,10 +320,10 @@ connectButton.onclick = async () => {
   }
 
   // WEBRTC API CALL 2 - Start a stream
-  const sdpResponse = await fetch(`${DID_API.url}/${DID_API.service}/streams/${streamId}/sdp`, {
+  const sdpResponse = await fetch(`${GEMINI_API.url}/${GEMINI_API.service}/streams/${streamId}/sdp`, {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${DID_API.key}`,
+      Authorization: `Basic ${GEMINI_API.key}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -335,10 +349,10 @@ startButton.onclick = async () => {
     document.getElementById('textArea').value = '';
 
     // Agents Overview - Step 3: Send a Message to a Chat session - Send a message to a Chat
-    const playResponse = await fetchWithRetries(`${DID_API.url}/agents/${agentId}/chat/${chatId}`, {
+    const playResponse = await fetchWithRetries(`${GEMINI_API.url}/agents/${agentId}/chat/${chatId}`, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${DID_API.key}`,
+        Authorization: `Basic ${GEMINI_API.key}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -365,10 +379,10 @@ startButton.onclick = async () => {
 
 const destroyButton = document.getElementById('destroy-button');
 destroyButton.onclick = async () => {
-  await fetch(`${DID_API.url}/${DID_API.service}/streams/${streamId}`, {
+  await fetch(`${GEMINI_API.url}/${GEMINI_API.service}/streams/${streamId}`, {
     method: 'DELETE',
     headers: {
-      Authorization: `Basic ${DID_API.key}`,
+      Authorization: `Basic ${GEMINI_API.key}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ session_id: sessionId }),
@@ -382,12 +396,12 @@ destroyButton.onclick = async () => {
 async function agentsAPIworkflow() {
   agentIdLabel.innerHTML = `<span style='color:orange'>Processing...<style='color:orange'>`;
   chatIdLabel.innerHTML = `<span style='color:orange'>Processing...<style='color:orange'>`;
-  axios.defaults.baseURL = `${DID_API.url}`;
-  axios.defaults.headers.common['Authorization'] = `Basic ${DID_API.key}`;
+  axios.defaults.baseURL = `${GEMINI_API.url}`;
+  axios.defaults.headers.common['Authorization'] = `Basic ${GEMINI_API.key}`;
   axios.defaults.headers.common['content-type'] = 'application/json';
 
   // Retry Mechanism (Polling) for this demo only - Please use Webhooks in real life applications!
-  // as described in https://docs.d-id.com/reference/knowledge-overview#%EF%B8%8F-step-2-add-documents-to-the-knowledge-base
+  // as described in https://docs.gemini.com/reference/knowledge-overview#%EF%B8%8F-step-2-add-documents-to-the-knowledge-base
   async function retry(url, retries = 1) {
     const maxRetryCount = 5; // Maximum number of retries
     const maxDelaySec = 10; // Maximum delay in seconds
@@ -415,10 +429,10 @@ async function agentsAPIworkflow() {
   }
 
   // Knowledge Overview - Step 1: Create a new Knowledge Base
-  // https://docs.d-id.com/reference/knowledge-overview#%EF%B8%8F-step-1-create-a-new-knowledge-base
+  // https://docs.gemini.com/reference/knowledge-overview#%EF%B8%8F-step-1-create-a-new-knowledge-base
   const createKnowledge = await axios.post('/knowledge', {
     name: 'knowledge',
-    description: 'D-ID Agents API',
+    description: 'Gemini Agents API',
   });
   console.log('Create Knowledge:', createKnowledge.data);
 
@@ -426,11 +440,11 @@ async function agentsAPIworkflow() {
   console.log('Knowledge ID: ' + knowledgeId);
 
   // Knowledge Overview - Step 2: Add Documents to the Knowledge Base
-  // https://docs.d-id.com/reference/knowledge-overview#%EF%B8%8F-step-2-add-documents-to-the-knowledge-base
+  // https://docs.gemini.com/reference/knowledge-overview#%EF%B8%8F-step-2-add-documents-to-the-knowledge-base
 
   const createDocument = await axios.post(`/knowledge/${knowledgeId}/documents`, {
     documentType: 'pdf',
-    source_url: 'https://d-id-public-bucket.s3.us-west-2.amazonaws.com/Prompt_engineering_Wikipedia.pdf',
+    source_url: 'https://gemini-public-bucket.s3.us-west-2.amazonaws.com/Prompt_engineering_Wikipedia.pdf',
     title: 'Prompt Engineering Wikipedia Page PDF',
   });
   console.log('Create Document: ', createDocument.data);
@@ -442,12 +456,12 @@ async function agentsAPIworkflow() {
   console.log('Document ID: ' + documentId);
 
   // Knowledge Overview - Step 3: Retrieving the Document and Knowledge status
-  // https://docs.d-id.com/reference/knowledge-overview#%EF%B8%8F-step-3-retrieving-the-document-and-knowledge-status
+  // https://docs.gemini.com/reference/knowledge-overview#%EF%B8%8F-step-3-retrieving-the-document-and-knowledge-status
   await retry(`/knowledge/${knowledgeId}/documents/${documentId}`);
   await retry(`/knowledge/${knowledgeId}`);
 
   // Agents Overview - Step 1: Create an Agent
-  // https://docs.d-id.com/reference/agents-overview#%EF%B8%8F-step-1-create-an-agent
+  // https://docs.gemini.com/reference/agents-overview#%EF%B8%8F-step-1-create-an-agent
   const createAgent = await axios.post('/agents', {
     knowledge: {
       provider: 'pinecone',
@@ -463,56 +477,4 @@ async function agentsAPIworkflow() {
         type: 'microsoft',
         voice_id: 'en-US-JennyMultilingualV2Neural',
       },
-      thumbnail: 'https://create-images-results.d-id.com/DefaultPresenters/Emma_f/v1_image.jpeg',
-      source_url: 'https://create-images-results.d-id.com/DefaultPresenters/Emma_f/v1_image.jpeg',
-    },
-    llm: {
-      type: 'openai',
-      provider: 'openai',
-      model: 'gpt-3.5-turbo-1106',
-      instructions: 'Your name is Emma, an AI designed to assist with information about Prompt Engineering and RAG',
-      template: 'rag-grounded',
-    },
-    preview_name: 'Emma',
-  });
-  console.log('Create Agent: ', createAgent.data);
-  let agentId = createAgent.data.id;
-  console.log('Agent ID: ' + agentId);
-
-  // Agents Overview - Step 2: Create a new Chat session with the Agent
-  // https://docs.d-id.com/reference/agents-overview#%EF%B8%8F-step-2-create-a-new-chat-session-with-the-agent
-  const createChat = await axios.post(`/agents/${agentId}/chat`);
-  console.log('Create Chat: ', createChat.data);
-  let chatId = createChat.data.id;
-  console.log('Chat ID: ' + chatId);
-
-  // Agents Overview - Step 3: Send a Message to a Chat session
-  // https://docs.d-id.com/reference/agents-overview#%EF%B8%8F-step-3--send-a-message-to-a-chat-session
-  // The WebRTC steps are called in the functions: 'connectButton.onclick', onIceCandidate(event), 'startButton.onclick'
-
-  console.log(
-    "Create new Agent with Knowledge - DONE!\n Press on the 'Connect' button to proceed.\n Store the created 'agentID' and 'chatId' variables at the bottom of the JS file for future chats"
-  );
-  agentIdLabel.innerHTML = agentId;
-  chatIdLabel.innerHTML = chatId;
-  return { agentId: agentId, chatId: chatId };
-}
-
-const agentsButton = document.getElementById('agents-button');
-agentsButton.onclick = async () => {
-  try {
-    const agentsIds = ({} = await agentsAPIworkflow());
-    console.log(agentsIds);
-    agentId = agentsIds.agentId;
-    chatId = agentsIds.chatId;
-    return;
-  } catch (err) {
-    agentIdLabel.innerHTML = `<span style='color:red'>Failed</span>`;
-    chatIdLabel.innerHTML = `<span style='color:red'>Failed</span>`;
-    throw new Error(err);
-  }
-};
-
-// Paste Your Created Agent and Chat IDs Here:
-agentId = '';
-chatId = '';
+      thumbnail: 'https://create-images-results.gemini.com
